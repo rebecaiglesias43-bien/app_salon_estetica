@@ -1,0 +1,701 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API Salón de Belleza",
+    "description": "API RESTful para gestión de salón de estética: citas, clientes, servicios, inventario, proveedores, compras, ventas, finanzas y cortes de caja.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://localhost:5000", "description": "Desarrollo local" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object" } },
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 20 },
+          "total": { "type": "integer", "example": 100 },
+          "pages": { "type": "integer", "example": 5 }
+        }
+      },
+      "Servicio": {
+        "type": "object",
+        "properties": {
+          "ser_id": { "type": "integer" },
+          "ser_nombre": { "type": "string" },
+          "ser_descripcion": { "type": "string" },
+          "ser_precio": { "type": "number", "format": "float" },
+          "ser_duracion": { "type": "integer" }
+        }
+      },
+      "Producto": {
+        "type": "object",
+        "properties": {
+          "pro_id": { "type": "integer" },
+          "pro_nombre": { "type": "string" },
+          "pro_precio": { "type": "number", "format": "float" },
+          "pro_stock": { "type": "integer" },
+          "pro_estado": { "type": "string", "enum": ["activo", "inactivo"] }
+        }
+      },
+      "Cliente": {
+        "type": "object",
+        "properties": {
+          "cli_id": { "type": "integer" },
+          "cli_nombre": { "type": "string" },
+          "cli_apellido": { "type": "string" },
+          "cli_telefono": { "type": "string" },
+          "cli_direccion": { "type": "string" }
+        }
+      },
+      "Cita": {
+        "type": "object",
+        "properties": {
+          "cit_id": { "type": "integer" },
+          "cit_cliente_id": { "type": "integer" },
+          "cit_fecha": { "type": "string", "format": "date" },
+          "cit_hora": { "type": "string", "format": "time" },
+          "cit_estado": { "type": "string", "enum": ["pendiente", "aprobada", "rechazada", "cancelada", "completada"] },
+          "cli_nombre": { "type": "string" },
+          "cli_apellido": { "type": "string" },
+          "cli_telefono": { "type": "string" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["General"],
+        "summary": "Información de la API",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": ["General"],
+        "summary": "Health check",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Autenticación"],
+        "summary": "Iniciar sesión",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string", "example": "admin" },
+                  "password": { "type": "string", "example": "123456" }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Token JWT" },
+          "401": { "description": "Credenciales inválidas" }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Autenticación"],
+        "summary": "Registrar nuevo usuario",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "usu_username": { "type": "string" },
+                  "usu_password": { "type": "string" },
+                  "usu_email": { "type": "string" }
+                },
+                "required": ["usu_username", "usu_password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Usuario registrado" },
+          "400": { "description": "Error de validación" }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "put": {
+        "tags": ["Autenticación"],
+        "summary": "Cambiar contraseña",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "current_password": { "type": "string" },
+                  "new_password": { "type": "string" }
+                },
+                "required": ["current_password", "new_password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Contraseña actualizada" },
+          "400": { "description": "Error de validación" }
+        }
+      }
+    },
+    "/api/servicios/": {
+      "get": {
+        "tags": ["Servicios"],
+        "summary": "Listar servicios",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Lista paginada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pagination" } } } }
+        }
+      },
+      "post": {
+        "tags": ["Servicios"],
+        "summary": "Crear servicio",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ser_nombre": { "type": "string" },
+                  "ser_descripcion": { "type": "string" },
+                  "ser_precio": { "type": "number" },
+                  "ser_duracion": { "type": "integer" }
+                },
+                "required": ["ser_nombre", "ser_precio"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Creado" }, "400": { "description": "Error de validación" } }
+      }
+    },
+    "/api/servicios/{id}": {
+      "get": {
+        "tags": ["Servicios"],
+        "summary": "Obtener servicio por ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrado" } }
+      },
+      "put": {
+        "tags": ["Servicios"],
+        "summary": "Actualizar servicio",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Actualizado" } }
+      },
+      "delete": {
+        "tags": ["Servicios"],
+        "summary": "Eliminar servicio",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Eliminado" } }
+      }
+    },
+    "/api/productos/": {
+      "get": {
+        "tags": ["Productos"],
+        "summary": "Listar productos",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      },
+      "post": {
+        "tags": ["Productos"],
+        "summary": "Crear producto",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pro_nombre": { "type": "string" },
+                  "pro_precio": { "type": "number" },
+                  "pro_stock": { "type": "integer", "default": 0 },
+                  "pro_estado": { "type": "string", "default": "activo" }
+                },
+                "required": ["pro_nombre", "pro_precio"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Creado" }, "400": { "description": "Error de validación" } }
+      }
+    },
+    "/api/productos/activos": {
+      "get": {
+        "tags": ["Productos"],
+        "summary": "Listar productos activos",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/productos/bajo-stock": {
+      "get": {
+        "tags": ["Productos"],
+        "summary": "Productos con stock bajo (<=5)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "limite", "in": "query", "schema": { "type": "integer", "default": 5 } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/productos/{id}": {
+      "get": { "tags": ["Productos"], "summary": "Obtener producto", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrado" } } },
+      "put": { "tags": ["Productos"], "summary": "Actualizar producto", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Actualizado" } } },
+      "delete": { "tags": ["Productos"], "summary": "Eliminar producto", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/api/clientes/": {
+      "get": {
+        "tags": ["Clientes"],
+        "summary": "Listar clientes",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      },
+      "post": {
+        "tags": ["Clientes"],
+        "summary": "Crear cliente",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cli_nombre": { "type": "string" },
+                  "cli_apellido": { "type": "string" },
+                  "cli_telefono": { "type": "string" },
+                  "cli_direccion": { "type": "string" }
+                },
+                "required": ["cli_nombre", "cli_telefono"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Creado" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/clientes/{id}": {
+      "get": { "tags": ["Clientes"], "summary": "Obtener cliente", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrado" } } },
+      "put": { "tags": ["Clientes"], "summary": "Actualizar cliente", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Actualizado" } } },
+      "delete": { "tags": ["Clientes"], "summary": "Eliminar cliente", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminado" }, "400": { "description": "Cliente con citas" } } }
+    },
+    "/api/clientes/{id}/historial": {
+      "get": { "tags": ["Clientes"], "summary": "Historial de servicios del cliente", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/proveedores/": {
+      "get": {
+        "tags": ["Proveedores"],
+        "summary": "Listar proveedores",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      },
+      "post": {
+        "tags": ["Proveedores"],
+        "summary": "Crear proveedor",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "prv_nombre": { "type": "string" }, "prv_telefono": { "type": "string" }, "prv_email": { "type": "string" }, "prv_direccion": { "type": "string" } }, "required": ["prv_nombre"] } } }
+        },
+        "responses": { "201": { "description": "Creado" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/proveedores/con-productos": {
+      "get": { "tags": ["Proveedores"], "summary": "Proveedores con conteo de productos", "security": [{ "BearerAuth": [] }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/proveedores/{id}": {
+      "get": { "tags": ["Proveedores"], "summary": "Obtener proveedor", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrado" } } },
+      "put": { "tags": ["Proveedores"], "summary": "Actualizar proveedor", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Actualizado" } } },
+      "delete": { "tags": ["Proveedores"], "summary": "Eliminar proveedor", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/api/usuarios/": {
+      "get": {
+        "tags": ["Usuarios"],
+        "summary": "Listar usuarios",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      },
+      "post": { "tags": ["Usuarios"], "summary": "Crear usuario", "security": [{ "BearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "usu_username": { "type": "string" }, "usu_password": { "type": "string" }, "usu_email": { "type": "string" }, "usu_estado": { "type": "string" } }, "required": ["usu_username", "usu_password"] } } } }, "responses": { "201": { "description": "Creado" }, "400": { "description": "Error" } } }
+    },
+    "/api/usuarios/{id}": {
+      "get": { "tags": ["Usuarios"], "summary": "Obtener usuario", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrado" } } },
+      "put": { "tags": ["Usuarios"], "summary": "Actualizar usuario", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Actualizado" } } },
+      "delete": { "tags": ["Usuarios"], "summary": "Eliminar usuario", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/api/citas/": {
+      "get": {
+        "tags": ["Citas"],
+        "summary": "Listar citas",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "estado", "in": "query", "schema": { "type": "string" } },
+          { "name": "fecha_inicio", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "fecha_fin", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      }
+    },
+    "/api/citas/public": {
+      "post": {
+        "tags": ["Citas"],
+        "summary": "Crear cita pública (sin auth)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cli_nombre": { "type": "string" },
+                  "cli_telefono": { "type": "string", "example": "3001234567" },
+                  "cit_fecha": { "type": "string", "format": "date", "example": "2026-05-20" },
+                  "cit_hora": { "type": "string", "example": "10:00:00" },
+                  "detalle": { "type": "array", "items": { "type": "object", "properties": { "servicio_id": { "type": "integer" }, "precio": { "type": "number" } } } }
+                },
+                "required": ["cli_telefono", "cit_fecha", "cit_hora"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Cita creada" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/citas/{id}": {
+      "get": { "tags": ["Citas"], "summary": "Obtener cita", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrada" } } }
+    },
+    "/api/citas/{id}/estado": {
+      "put": { "tags": ["Citas"], "summary": "Cambiar estado de cita (aprobada/completada/etc)", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "estado": { "type": "string", "enum": ["pendiente", "aprobada", "rechazada", "cancelada", "completada"] } }, "required": ["estado"] } } } }, "responses": { "200": { "description": "Estado actualizado" }, "400": { "description": "Estado inválido" } } }
+    },
+    "/api/citas/{id}/reprogramar": {
+      "put": { "tags": ["Citas"], "summary": "Reprogramar cita", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "cit_fecha": { "type": "string", "format": "date" }, "cit_hora": { "type": "string" } }, "required": ["cit_fecha", "cit_hora"] } } } }, "responses": { "200": { "description": "Reprogramada" }, "400": { "description": "Error" } } }
+    },
+    "/api/facturas/": {
+      "get": {
+        "tags": ["Facturas"],
+        "summary": "Listar facturas",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      }
+    },
+    "/api/facturas/{id}": {
+      "get": { "tags": ["Facturas"], "summary": "Obtener factura con detalle y pagos", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrada" } } }
+    },
+    "/api/facturas/{id}/estado": {
+      "put": { "tags": ["Facturas"], "summary": "Actualizar estado de factura", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "estado": { "type": "string" } }, "required": ["estado"] } } } }, "responses": { "200": { "description": "Actualizado" } } }
+    },
+    "/api/compras/": {
+      "get": {
+        "tags": ["Compras"],
+        "summary": "Listar compras",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      },
+      "post": {
+        "tags": ["Compras"],
+        "summary": "Registrar compra con detalle (actualiza stock automáticamente)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "com_proveedor_id": { "type": "integer" },
+                  "detalle": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "dco_producto_id": { "type": "integer" },
+                        "dco_cantidad": { "type": "integer" },
+                        "dco_precio_unitario": { "type": "number" }
+                      }
+                    }
+                  }
+                },
+                "required": ["com_proveedor_id", "detalle"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Compra registrada" }, "400": { "description": "Error de validación" } }
+      }
+    },
+    "/api/compras/{id}": {
+      "get": { "tags": ["Compras"], "summary": "Obtener compra con detalle", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrada" } } },
+      "delete": { "tags": ["Compras"], "summary": "Eliminar compra", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminada" } } }
+    },
+    "/api/compras/{id}/estado": {
+      "put": { "tags": ["Compras"], "summary": "Actualizar estado de compra", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "estado": { "type": "string" } }, "required": ["estado"] } } } }, "responses": { "200": { "description": "Actualizado" } } }
+    },
+    "/api/pagos/": {
+      "post": {
+        "tags": ["Pagos"],
+        "summary": "Registrar pago",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pag_factura_id": { "type": "integer" },
+                  "pag_metodo": { "type": "string", "example": "Efectivo" },
+                  "pag_monto": { "type": "number" }
+                },
+                "required": ["pag_factura_id", "pag_metodo", "pag_monto"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Pago registrado" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/pagos/factura/{factura_id}": {
+      "get": { "tags": ["Pagos"], "summary": "Pagos por factura", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "factura_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/ventas/": {
+      "post": {
+        "tags": ["Ventas"],
+        "summary": "Registrar venta directa de productos",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cli_nombre": { "type": "string" },
+                  "cli_telefono": { "type": "string" },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "tipo": { "type": "string", "enum": ["producto"] },
+                        "id": { "type": "integer" },
+                        "precio": { "type": "number" },
+                        "cantidad": { "type": "integer", "default": 1 }
+                      }
+                    }
+                  }
+                },
+                "required": ["items"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Venta registrada" }, "400": { "description": "Error (stock insuficiente)" } }
+      }
+    },
+    "/api/cortes-caja/": {
+      "get": {
+        "tags": ["Cortes de Caja"],
+        "summary": "Listar cortes de caja",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      }
+    },
+    "/api/cortes-caja/abierto": {
+      "get": { "tags": ["Cortes de Caja"], "summary": "Obtener corte de caja abierto", "security": [{ "BearerAuth": [] }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/cortes-caja/abrir": {
+      "post": { "tags": ["Cortes de Caja"], "summary": "Abrir corte de caja", "security": [{ "BearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "cor_base_inicial": { "type": "number" } }, "required": ["cor_base_inicial"] } } } }, "responses": { "201": { "description": "Corte abierto" }, "400": { "description": "Ya hay un corte abierto" } } }
+    },
+    "/api/cortes-caja/{id}/cerrar": {
+      "put": { "tags": ["Cortes de Caja"], "summary": "Cerrar corte de caja", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "cor_ingresos": { "type": "number" }, "cor_egresos": { "type": "number" } }, "required": ["cor_ingresos", "cor_egresos"] } } } }, "responses": { "200": { "description": "Corte cerrado" } } }
+    },
+    "/api/inventario-movimientos/": {
+      "get": {
+        "tags": ["Inventario"],
+        "summary": "Listar movimientos de inventario",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "producto_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "tipo", "in": "query", "schema": { "type": "string", "enum": ["Entrada", "Salida"] } }
+        ],
+        "responses": { "200": { "description": "Lista paginada" } }
+      },
+      "post": {
+        "tags": ["Inventario"],
+        "summary": "Registrar movimiento (Entrada/Salida) y actualiza stock",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "inm_producto_id": { "type": "integer" },
+                  "inm_tipo": { "type": "string", "enum": ["Entrada", "Salida"] },
+                  "inm_cantidad": { "type": "integer" },
+                  "inm_motivo": { "type": "string" }
+                },
+                "required": ["inm_producto_id", "inm_tipo", "inm_cantidad"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Movimiento registrado" }, "400": { "description": "Error" } }
+      }
+    },
+    "/api/inventario-movimientos/{id}": {
+      "get": { "tags": ["Inventario"], "summary": "Obtener movimiento", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" }, "404": { "description": "No encontrado" } } }
+    },
+    "/api/detalle-citas/cita/{cita_id}": {
+      "get": { "tags": ["Detalle Citas"], "summary": "Detalle por cita", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "cita_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } },
+      "delete": { "tags": ["Detalle Citas"], "summary": "Eliminar detalle por cita", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "cita_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/api/detalle-citas/": {
+      "post": { "tags": ["Detalle Citas"], "summary": "Crear detalle de cita", "security": [{ "BearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "dci_cita_id": { "type": "integer" }, "dci_servicio_id": { "type": "integer" }, "dci_precio": { "type": "number" } }, "required": ["dci_cita_id", "dci_servicio_id", "dci_precio"] } } } }, "responses": { "201": { "description": "Creado" }, "400": { "description": "Error" } } }
+    },
+    "/api/detalle-facturas/factura/{factura_id}": {
+      "get": { "tags": ["Detalle Facturas"], "summary": "Detalle por factura", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "factura_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/detalle-facturas/": {
+      "post": { "tags": ["Detalle Facturas"], "summary": "Crear detalle de factura", "security": [{ "BearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "dfa_factura_id": { "type": "integer" }, "dfa_servicio_id": { "type": "integer" }, "dfa_subtotal": { "type": "number" } }, "required": ["dfa_factura_id", "dfa_servicio_id", "dfa_subtotal"] } } } }, "responses": { "201": { "description": "Creado" }, "400": { "description": "Error" } } }
+    },
+    "/api/proveedores-productos/proveedor/{proveedor_id}": {
+      "get": { "tags": ["Proveedores Productos"], "summary": "Productos de un proveedor", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "proveedor_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/proveedores-productos/producto/{producto_id}": {
+      "get": { "tags": ["Proveedores Productos"], "summary": "Proveedores de un producto", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "producto_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/proveedores-productos/": {
+      "post": { "tags": ["Proveedores Productos"], "summary": "Asociar producto a proveedor", "security": [{ "BearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "ppr_proveedor_id": { "type": "integer" }, "ppr_producto_id": { "type": "integer" }, "ppr_precio": { "type": "number" } }, "required": ["ppr_proveedor_id", "ppr_producto_id", "ppr_precio"] } } } }, "responses": { "201": { "description": "Creada" }, "400": { "description": "Error" } } }
+    },
+    "/api/proveedores-productos/{id}/precio": {
+      "put": { "tags": ["Proveedores Productos"], "summary": "Actualizar precio del proveedor para el producto", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "ppr_precio": { "type": "number" } }, "required": ["ppr_precio"] } } } }, "responses": { "200": { "description": "Actualizado" } } }
+    },
+    "/api/proveedores-productos/{id}": {
+      "delete": { "tags": ["Proveedores Productos"], "summary": "Eliminar asociación", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminada" } } }
+    },
+    "/api/servicios-productos/servicio/{servicio_id}": {
+      "get": { "tags": ["Servicios Productos"], "summary": "Productos de un servicio", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "servicio_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/servicios-productos/producto/{producto_id}": {
+      "get": { "tags": ["Servicios Productos"], "summary": "Servicios que usan un producto", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "producto_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/servicios-productos/": {
+      "post": { "tags": ["Servicios Productos"], "summary": "Asociar producto a servicio", "security": [{ "BearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "sep_servicio_id": { "type": "integer" }, "sep_producto_id": { "type": "integer" }, "sep_cantidad": { "type": "integer" } }, "required": ["sep_servicio_id", "sep_producto_id", "sep_cantidad"] } } } }, "responses": { "201": { "description": "Creada" }, "400": { "description": "Error" } } }
+    },
+    "/api/servicios-productos/{id}": {
+      "put": { "tags": ["Servicios Productos"], "summary": "Actualizar cantidad", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "sep_cantidad": { "type": "integer" } }, "required": ["sep_cantidad"] } } } }, "responses": { "200": { "description": "Actualizado" } } },
+      "delete": { "tags": ["Servicios Productos"], "summary": "Eliminar asociación", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminada" } } }
+    },
+    "/api/historial-productos-usados/cita/{cita_id}": {
+      "get": { "tags": ["Historial Productos"], "summary": "Productos usados en una cita", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "cita_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } },
+      "delete": { "tags": ["Historial Productos"], "summary": "Eliminar historial de una cita", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "cita_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/api/historial-productos-usados/producto/{producto_id}": {
+      "get": { "tags": ["Historial Productos"], "summary": "Citas donde se usó un producto", "security": [{ "BearerAuth": [] }], "parameters": [{ "name": "producto_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/historial-productos-usados/": {
+      "post": { "tags": ["Historial Productos"], "summary": "Registrar producto usado en cita", "security": [{ "BearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "hpu_cita_id": { "type": "integer" }, "hpu_producto_id": { "type": "integer" }, "hpu_notas": { "type": "string" } }, "required": ["hpu_cita_id", "hpu_producto_id"] } } } }, "responses": { "201": { "description": "Registrado" }, "400": { "description": "Error" } } }
+    },
+    "/api/finanzas/resumen": {
+      "get": {
+        "tags": ["Finanzas"],
+        "summary": "Resumen financiero (ingresos, egresos, ganancia, bajos stock)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Resumen",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ingresos": { "type": "number" },
+                    "egresos": { "type": "number" },
+                    "ganancia": { "type": "number" },
+                    "total_facturas": { "type": "integer" },
+                    "total_compras": { "type": "integer" },
+                    "citas_completadas": { "type": "integer" },
+                    "bajo_stock": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
