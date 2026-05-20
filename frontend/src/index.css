@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-serif: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --color-salon-gold: #AA7220;
+  --color-salon-complementary: #F0C48C;
+  --color-salon-pink: #F0C48C;
+  --color-salon-lavender: #F0C48C;
+  --color-salon-cream: #FFFFFF;
+  --color-salon-dark: #333333;
+  --color-salon-bg: #FFFFFF;
+  --color-salon-success: #C1E1C1;
+  --color-salon-error: #FFB3B3;
+}
+
+body {
+  @apply bg-white text-salon-dark font-sans h-full;
+}
