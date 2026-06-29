@@ -1,9 +1,0 @@
-Flask
-flask-cors
-pymysql
-Flask-JWT-Extended
-python-dotenv
-bcrypt
-gunicorn
-
-# pip install -r requirements.txt
