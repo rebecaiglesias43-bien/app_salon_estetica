@@ -2,12 +2,11 @@ from flask import request, jsonify
 from models.ServiciosProductos import ServiciosProductos
 from services.authService import auth_required
 from services.validationService import get_json_data, require_fields, validate_int
-from services.cacheService import cached, clear_cache
+from services.cacheService import clear_cache
 
 CACHE_KEY = '/api/servicios-productos'
 
 @auth_required
-@cached(ttl=60)
 def get_by_servicio(servicio_id):
     try:
         productos = ServiciosProductos.get_by_servicio(servicio_id)
@@ -16,7 +15,6 @@ def get_by_servicio(servicio_id):
         return jsonify({'error': str(e)}), 500
 
 @auth_required
-@cached(ttl=60)
 def get_by_producto(producto_id):
     try:
         servicios = ServiciosProductos.get_by_producto(producto_id)

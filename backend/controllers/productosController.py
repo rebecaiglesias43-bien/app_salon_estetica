@@ -3,10 +3,9 @@ from models.Productos import Productos
 from services.authService import auth_required
 from services.validationService import get_json_data, require_fields, require_positive_number, validate_int, validate_estado
 from services.paginationService import get_pagination_params, paginated_response
-from services.cacheService import cached, clear_cache
+from services.cacheService import clear_cache
 
 @auth_required
-@cached(ttl=60)
 def get_productos():
     try:
         page, limit, offset = get_pagination_params()
@@ -17,7 +16,6 @@ def get_productos():
         return jsonify({'error': str(e)}), 500
 
 @auth_required
-@cached(ttl=60)
 def get_productos_activos():
     try:
         productos = Productos.get_activos()
@@ -36,7 +34,6 @@ def get_producto(id):
         return jsonify({'error': str(e)}), 500
 
 @auth_required
-@cached(ttl=60)
 def get_bajo_stock():
     try:
         limite = request.args.get('limite', 5, type=int)

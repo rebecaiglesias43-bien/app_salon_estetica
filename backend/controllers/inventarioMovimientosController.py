@@ -5,6 +5,7 @@ from models.CortesCaja import CortesCaja
 from services.authService import auth_required
 from services.validationService import get_json_data, require_fields, validate_int
 from services.paginationService import get_pagination_params, paginated_response
+from services.cacheService import clear_cache
 
 @auth_required
 def get_movimientos():
@@ -71,6 +72,9 @@ def create_movimiento():
         # Actualizar stock
         ajuste = cantidad if tipo == 'Entrada' else -cantidad
         Productos.update_stock(producto_id, ajuste)
+        clear_cache('/api/productos')
+        clear_cache('/api/servicios-productos')
+        clear_cache('/api/proveedores-productos')
         
         return jsonify({'message': 'Movimiento registrado exitosamente', 'inm_id': movimiento_id}), 201
     except Exception as e:

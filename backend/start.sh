@@ -20,4 +20,4 @@ if [ -z "$JWT_SECRET_KEY" ]; then
 fi
 
 echo "→ Todo OK. Arrancando servidor..."
-exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120
+exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 1 --timeout 120
