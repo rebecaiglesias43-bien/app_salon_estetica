@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: salon-estetica-api
+    runtime: python
+    repo: https://github.com/rebecaiglesias43-bien/app_salon_estetica
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DB_HOST
+        sync: false      # Lo configuras manual en el dashboard de Render
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: sistema_estetica
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: JWT_ACCESS_TOKEN_EXPIRES
+        value: 3600
+      - key: CORS_ORIGINS
+        sync: false      # P.ej: https://tu-frontend.vercel.app
+      - key: FLASK_ENV
+        value: production
