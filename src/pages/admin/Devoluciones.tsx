@@ -97,8 +97,8 @@ export default function Devoluciones() {
         // Extraer compra_id del motivo (nuevo formato)
         const match = motivoRaw.match(/compra_id=(\d+)/);
         const movCompraId = match ? parseInt(match[1]) : null;
-        // Si no tiene compra_id (devoluciones viejas), contar para todas las compras
-        if (movCompraId === null || movCompraId === compra.com_id) {
+        // Solo contar si es de ESTA compra (ignorar devoluciones viejas sin compra_id)
+        if (movCompraId === compra.com_id) {
           devueltosPrevios[m.inm_producto_id] = (devueltosPrevios[m.inm_producto_id] || 0) + m.inm_cantidad;
         }
       });
