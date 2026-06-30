@@ -8,7 +8,6 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { useToast } from '../../components/ToastContext';
 
 interface Proveedor { prv_id: number; prv_nombre: string; prv_telefono: string; prv_email: string; prv_direccion: string; total_productos?: number; }
-const glassCard = 'bg-gradient-to-br from-white/5 to-white/[0.02] rounded-2xl border border-white/10';
 
 export default function Proveedores() {
   const navigate = useNavigate();
