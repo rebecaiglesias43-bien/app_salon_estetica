@@ -89,6 +89,39 @@ def limpiar_todo():
         return jsonify({'error': str(e)}), 500
 
 @auth_required
+def limpiar_historial():
+    """Elimina todos los cortes CERRADOS y cortes ABIERTOS viejos,
+    conservando solo el corte abierto mas reciente (el activo)."""
+    try:
+        activo = CortesCaja.get_abierto()
+        if not activo:
+            return jsonify({'error': 'No hay ningun corte abierto activo'}), 400
+        
+        activo_id = activo['cor_id']
+        
+        # 1. Contar cuantos hay en total
+        total_antes = CortesCaja.count_all()
+        
+        # 2. Desvincular facturas de los cortes que vamos a eliminar
+        CortesCaja.execute(
+            "UPDATE facturas SET fac_corte_id = NULL WHERE fac_corte_id IS NOT NULL AND fac_corte_id != %s",
+            (activo_id,)
+        )
+        
+        # 3. Eliminar todos menos el activo
+        CortesCaja.execute("DELETE FROM cortes_caja WHERE cor_id != %s", (activo_id,))
+        
+        eliminados = total_antes - 1
+        
+        return jsonify({
+            'message': f'Historial limpiado. {eliminados} cortes eliminados, 1 conservado (activo).',
+            'activo_id': activo_id,
+            'eliminados': eliminados
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@auth_required
 def cerrar_corte(id):
     try:
         corte = CortesCaja.get_by_id(id)
