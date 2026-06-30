@@ -55,7 +55,16 @@ class Compras(Model):
     @classmethod
     def update_estado(cls, id, estado):
         sql = "UPDATE compras SET com_estado = %s WHERE com_id = %s"
-        return cls.execute(sql, (estado, id))
+        try:
+            return cls.execute(sql, (estado, id))
+        except Exception as e:
+            # Si la columna es muy chica (varchar(20) vs 'Parcialmente devuelta' = 22 chars),
+            # ampliarla a varchar(30) y reintentar
+            err_msg = str(e)
+            if 'Data too long' in err_msg and 'com_estado' in err_msg:
+                cls.execute("ALTER TABLE compras MODIFY com_estado varchar(30) DEFAULT 'Completada'")
+                return cls.execute(sql, (estado, id))
+            raise
     
     @classmethod
     def delete(cls, id):

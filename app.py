@@ -54,22 +54,6 @@ CORS(app, origins=origins_list, supports_credentials=True)
 jwt = JWTManager(app)
 init_app(app)
 
-# ── Migraciones automáticas al iniciar ──
-def _run_migrations():
-    """Aplica migraciones pendientes de forma segura (idempotentes)."""
-    from services.databaseService import get_db
-    try:
-        db = get_db()
-        cur = db.cursor()
-        # Ampliar com_estado para 'Parcialmente devuelta' (22 chars, antes varchar(20))
-        cur.execute("ALTER TABLE compras MODIFY com_estado varchar(30) DEFAULT 'Completada'")
-        db.commit()
-    except Exception:
-        pass  # Ya aplicada o error no crítico
-
-with app.app_context():
-    _run_migrations()
-
 # ── JSON encoder para tipos no serializables ──
 class CustomJSONProvider(DefaultJSONProvider):
     @staticmethod
