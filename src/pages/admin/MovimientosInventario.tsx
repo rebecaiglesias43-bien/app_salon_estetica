@@ -32,6 +32,18 @@ interface GrupoCita {
 
 const glassCard = 'bg-gradient-to-br from-white/5 to-white/[0.02] rounded-2xl border border-white/10';
 
+/** Formatea el inm_motivo crudo a un texto legible */
+function formatMotivo(raw: string): string {
+  if (!raw) return '—';
+  // Formato nuevo: Devolución|compra_id=77|Producto defectuoso
+  const pipeMatch = raw.match(/^Devolución\|compra_id=(\d+)\|(.+)$/);
+  if (pipeMatch) return `Devolución — ${pipeMatch[2]} (Compra #${pipeMatch[1]})`;
+  // Formato viejo: Devolución - Producto defectuoso (ya legible, solo normalizar guión)
+  if (raw.startsWith('Devolución - ')) return raw.replace(' - ', ' — ');
+  // Otros: ya legibles (Compra, Uso en servicio — X, Cita #N, Reversión de compra)
+  return raw;
+}
+
 export default function MovimientosInventario() {
   const [grupos, setGrupos] = useState<GrupoCita[]>([]);
   const [individuales, setIndividuales] = useState<Movimiento[]>([]);
@@ -240,7 +252,7 @@ export default function MovimientosInventario() {
                     <td className={`px-4 py-3 text-right font-mono ${m.inm_tipo === 'Entrada' ? 'text-green-400' : 'text-orange-400'}`}>
                       {m.inm_tipo === 'Entrada' ? '+' : ''}{m.inm_cantidad}
                     </td>
-                    <td className="px-4 py-3 text-white/40 text-xs">{m.inm_motivo || '—'}</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">{formatMotivo(m.inm_motivo)}</td>
                     <td className="px-4 py-3 text-right text-white/30 text-xs">{m.inm_fecha}</td>
                   </tr>
                 ))}
