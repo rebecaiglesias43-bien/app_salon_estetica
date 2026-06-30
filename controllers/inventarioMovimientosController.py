@@ -90,3 +90,77 @@ def get_movimientos_agrupados():
         return jsonify(paginated_response(grupos, total, page, limit)), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@auth_required
+def limpiar_transaccional():
+    """Elimina todos los datos transaccionales (compras, facturas, citas, movimientos)
+    preservando productos, proveedores, clientes, servicios y stock actual.
+    ATENCION: Operacion destructiva e irreversible."""
+    from models.Productos import Productos
+    from models.InventarioMovimientos import InventarioMovimientos as IM
+    from datetime import date
+    
+    try:
+        resultados = {}
+        
+        # ── 1. Guardar stock actual de todos los productos ──
+        productos = Productos.query_all("SELECT pro_id, pro_stock, pro_nombre FROM productos")
+        stock_actual = {p['pro_id']: (p['pro_stock'] or 0) for p in productos}
+        resultados['productos_con_stock'] = len(stock_actual)
+        
+        # ── 2. Eliminar en orden (hijos → padres) ──
+        orden = [
+            'detalle_facturas',
+            'detalle_compras',
+            'pagos',
+            'historial_productos_usados',
+            'detalle_citas',
+            'facturas',
+            'compras',
+            'citas',
+            'inventario_movimientos',
+        ]
+        
+        for tabla in orden:
+            IM.execute(f"DELETE FROM {tabla}")
+            resultados[tabla] = 'ok'
+        
+        # ── 3. Resetear AUTO_INCREMENTs ──
+        for tabla in orden:
+            try:
+                IM.execute(f"ALTER TABLE {tabla} AUTO_INCREMENT = 1")
+            except Exception:
+                pass
+        
+        # ── 4. Restaurar stock ──
+        restaurados = 0
+        for pro_id, stock in stock_actual.items():
+            if stock > 0:
+                IM.execute("UPDATE productos SET pro_stock = %s WHERE pro_id = %s", (stock, pro_id))
+                restaurados += 1
+        resultados['stock_restaurado'] = restaurados
+        
+        # ── 5. Crear movimiento "Ajuste inicial" por cada producto con stock ──
+        ajustes = 0
+        for pro_id, stock in stock_actual.items():
+            if stock > 0:
+                IM.create({
+                    'inm_producto_id': pro_id,
+                    'inm_cita_id': None,
+                    'inm_tipo': 'Entrada',
+                    'inm_cantidad': stock,
+                    'inm_fecha': date.today(),
+                    'inm_motivo': 'Ajuste inicial'
+                })
+                ajustes += 1
+        resultados['ajustes_iniciales'] = ajustes
+        
+        return jsonify({
+            'message': 'Limpieza transaccional completada',
+            'detalle': resultados
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

@@ -6,5 +6,6 @@ inventarioMovimientos_bp = Blueprint('inventarioMovimientos', __name__, url_pref
 
 inventarioMovimientos_bp.route('/', methods=['GET'])(auth_required(inventarioMovimientosController.get_movimientos))
 inventarioMovimientos_bp.route('/agrupados', methods=['GET'])(auth_required(inventarioMovimientosController.get_movimientos_agrupados))
+inventarioMovimientos_bp.route('/limpiar-transaccional', methods=['POST'])(auth_required(inventarioMovimientosController.limpiar_transaccional))
 inventarioMovimientos_bp.route('/<int:id>', methods=['GET'])(auth_required(inventarioMovimientosController.get_movimiento))
 inventarioMovimientos_bp.route('/', methods=['POST'])(auth_required(inventarioMovimientosController.create_movimiento))
