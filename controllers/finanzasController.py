@@ -337,3 +337,149 @@ def resumen():
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@auth_required
+def seed_saludable():
+    """Genera datos financieros saludables para presentacion:
+    - 6 facturas pagadas (~$350K ingresos)
+    - 2 compras completadas (~$80K egresos)
+    - Resultado: ganancia neta positiva (~$270K)
+    ATENCION: Asume que la BD transaccional esta limpia."""
+    from models.CortesCaja import CortesCaja
+    from models.Facturas import Facturas
+    from models.Pagos import Pagos
+    from models.DetalleFacturas import DetalleFacturas
+    from models.Compras import Compras
+    from models.DetalleCompras import DetalleCompras
+    from models.Productos import Productos
+    from models.InventarioMovimientos import InventarioMovimientos
+    from services.cacheService import clear_cache
+    from datetime import date, datetime
+    
+    try:
+        db = get_db()
+        cur = db.cursor()
+        hoy = date.today()
+        resumen = {}
+        
+        # ── 1. Abrir corte de caja ──
+        abierto = CortesCaja.get_abierto()
+        if not abierto:
+            CortesCaja.abrir(50000, 'diario')
+            abierto = CortesCaja.get_abierto()
+        corte_id = abierto['cor_id']
+        resumen['corte_id'] = corte_id
+        
+        # ── 2. Obtener clientes y servicios existentes ──
+        cur.execute("SELECT cli_id, cli_nombre, cli_apellido FROM clientes ORDER BY cli_id LIMIT 10")
+        clientes = cur.fetchall()
+        cur.execute("SELECT ser_id, ser_nombre, ser_precio FROM servicios WHERE ser_precio > 0 ORDER BY ser_precio DESC LIMIT 10")
+        servicios = cur.fetchall()
+        cur.execute("SELECT pro_id, pro_nombre, pro_precio, pro_stock FROM productos WHERE pro_stock > 0 AND pro_estado = 'activo' ORDER BY pro_stock DESC LIMIT 10")
+        productos = cur.fetchall()
+        cur.execute("SELECT prv_id, prv_nombre FROM proveedores LIMIT 5")
+        proveedores = cur.fetchall()
+        
+        if len(clientes) < 3 or len(servicios) < 3:
+            return jsonify({'error': 'Se necesitan al menos 3 clientes y 3 servicios. Ejecute seed_test_data.py primero.'}), 400
+        
+        # ── 3. Crear 6 citas + facturas ──
+        citas_creadas = []
+        facturas_data = [
+            {'servicio_idx': 0, 'precio': float(servicios[0]['ser_precio']), 'cli_idx': 0},
+            {'servicio_idx': 1, 'precio': float(servicios[1]['ser_precio']), 'cli_idx': 1},
+            {'servicio_idx': 2, 'precio': float(servicios[2]['ser_precio']), 'cli_idx': 2},
+            {'servicio_idx': 0, 'precio': float(servicios[0]['ser_precio']), 'cli_idx': 3} if len(clientes) > 3 else {'servicio_idx': 0, 'precio': float(servicios[0]['ser_precio']), 'cli_idx': 0},
+            {'servicio_idx': 3, 'precio': float(servicios[3]['ser_precio']) if len(servicios) > 3 else float(servicios[0]['ser_precio']), 'cli_idx': 4} if len(clientes) > 4 else {'servicio_idx': 1, 'precio': float(servicios[1]['ser_precio']), 'cli_idx': 1},
+            {'servicio_idx': 1, 'precio': float(servicios[1]['ser_precio']), 'cli_idx': 5} if len(clientes) > 5 else {'servicio_idx': 2, 'precio': float(servicios[2]['ser_precio']), 'cli_idx': 2},
+        ]
+        
+        total_ingresos = 0
+        for i, fd in enumerate(facturas_data):
+            cli = clientes[fd['cli_idx'] % len(clientes)]
+            serv = servicios[fd['servicio_idx'] % len(servicios)]
+            precio = float(serv['ser_precio'])
+            
+            # Crear cita
+            cur.execute(
+                "INSERT INTO citas (cit_cliente_id, cit_fecha, cit_hora, cit_estado) VALUES (%s,%s,%s,%s)",
+                (cli['cli_id'], hoy, f"{10+i}:00:00", 'completada')
+            )
+            cit_id = cur.lastrowid
+            citas_creadas.append(cit_id)
+            
+            # Crear detalle_citas
+            cur.execute(
+                "INSERT INTO detalle_citas (dci_cita_id, dci_servicio_id, dci_precio) VALUES (%s,%s,%s)",
+                (cit_id, serv['ser_id'], precio)
+            )
+            
+            # Crear factura (asignada al corte abierto)
+            cur.execute(
+                "INSERT INTO facturas (fac_cita_id, fac_cliente_id, fac_fecha, fac_total, fac_estado, fac_corte_id) VALUES (%s,%s,%s,%s,%s,%s)",
+                (cit_id, cli['cli_id'], hoy, precio, 'pagado', corte_id)
+            )
+            fac_id = cur.lastrowid
+            
+            # Crear pago
+            cur.execute(
+                "INSERT INTO pagos (pag_factura_id, pag_monto, pag_metodo, pag_fecha) VALUES (%s,%s,%s,%s)",
+                (fac_id, precio, 'Efectivo', datetime.now())
+            )
+            
+            total_ingresos += precio
+        
+        db.commit()
+        resumen['facturas_creadas'] = len(facturas_data)
+        resumen['ingresos_totales'] = total_ingresos
+        
+        # ── 4. Crear 2 compras pequeñas ──
+        total_egresos = 0
+        for i in range(2):
+            prv = proveedores[i % len(proveedores)]
+            prod = productos[i % len(productos)]
+            cantidad = 5
+            precio_unit = float(prod['pro_precio']) * 0.6  # precio de costo ~60% del precio venta
+            subtotal = cantidad * precio_unit
+            
+            cur.execute(
+                "INSERT INTO compras (com_proveedor_id, com_fecha, com_total, com_estado) VALUES (%s,%s,%s,%s)",
+                (prv['prv_id'], hoy, subtotal, 'Completada')
+            )
+            com_id = cur.lastrowid
+            
+            cur.execute(
+                "INSERT INTO detalle_compras (dco_compra_id, dco_producto_id, dco_cantidad, dco_precio_unitario, dco_subtotal) VALUES (%s,%s,%s,%s,%s)",
+                (com_id, prod['pro_id'], cantidad, precio_unit, subtotal)
+            )
+            
+            # Actualizar stock
+            cur.execute(
+                "UPDATE productos SET pro_stock = pro_stock + %s WHERE pro_id = %s",
+                (cantidad, prod['pro_id'])
+            )
+            
+            # Movimiento de inventario
+            cur.execute(
+                "INSERT INTO inventario_movimientos (inm_producto_id, inm_tipo, inm_cantidad, inm_fecha, inm_motivo) VALUES (%s,%s,%s,%s,%s)",
+                (prod['pro_id'], 'Entrada', cantidad, hoy, 'Compra')
+            )
+            
+            total_egresos += subtotal
+        
+        db.commit()
+        resumen['compras_creadas'] = 2
+        resumen['egresos_totales'] = total_egresos
+        resumen['ganancia_neta'] = total_ingresos - total_egresos
+        
+        clear_cache('/api/productos')
+        
+        return jsonify({
+            'message': 'Datos saludables generados exitosamente',
+            'resumen': resumen
+        }), 201
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
