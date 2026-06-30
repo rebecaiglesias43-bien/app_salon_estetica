@@ -87,11 +87,14 @@ def create_devolucion():
         movimientos = InventarioMovimientos.search(tipo='Salida', limit=10000)
         for m in (movimientos or []):
             motivo_raw = m.get('inm_motivo', '')
+            # Solo contar movimientos de tipo devolución (ignorar "Compra", "Uso en servicio", etc.)
+            if not motivo_raw.startswith('Devolución'):
+                continue
             # Nuevo formato: Devolución|compra_id=X|...
             match = re.search(r'compra_id=(\d+)', motivo_raw)
             mov_compra_id = int(match.group(1)) if match else None
             
-            # Solo contar si es de esta misma compra (compatibilidad: movimientos viejos sin compra_id también se cuentan)
+            # Si no tiene compra_id (devoluciones viejas), contar para todas las compras
             if mov_compra_id is None or mov_compra_id == compra_id:
                 pid = m['inm_producto_id']
                 if pid in total_devuelto_por_producto:
