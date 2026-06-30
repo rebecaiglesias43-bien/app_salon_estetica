@@ -94,7 +94,9 @@ class Proveedores(Model):
         compras = cls.query_one(sql_compras, (id,))
         if compras and compras['total'] > 0:
             return True, 'compras'
-        sql_productos = "SELECT COUNT(*) as total FROM proveedores_productos WHERE ppr_proveedor_id = %s"
+        sql_productos = """SELECT COUNT(*) as total FROM proveedores_productos pp
+                           JOIN productos p ON pp.ppr_producto_id = p.pro_id
+                           WHERE pp.ppr_proveedor_id = %s"""
         productos = cls.query_one(sql_productos, (id,))
         if productos and productos['total'] > 0:
             return True, 'productos'

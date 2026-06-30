@@ -97,6 +97,13 @@ def update_proveedor(id):
 @auth_required
 def delete_proveedor(id):
     try:
+        # Limpiar asociaciones huérfanas (producto ya no existe)
+        Proveedores.execute(
+            """DELETE pp FROM proveedores_productos pp
+               LEFT JOIN productos p ON pp.ppr_producto_id = p.pro_id
+               WHERE p.pro_id IS NULL"""
+        )
+        
         # Verificar si tiene asociaciones
         tiene, tipo = Proveedores.has_associations(id)
         if tiene:
