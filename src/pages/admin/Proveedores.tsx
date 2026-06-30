@@ -153,29 +153,75 @@ export default function Proveedores() {
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
       </div>
       {loading ? <div className="p-8 text-center text-white/30">Cargando...</div> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {proveedores.map(p => (
-            <div key={p.prv_id} className={`${glassCard} p-5 hover:border-salon-gold/20 transition-all`}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center"><Truck size={18} className="text-salon-gold" /></div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm truncate">{p.prv_nombre}</h3>
-                  <span className="text-[10px] text-white/30 flex items-center gap-1 mt-0.5">
-                    <PackageSearch size={10} /> {p.total_productos ?? 0} producto{(p.total_productos ?? 0) !== 1 ? 's' : ''}
-                  </span>
+            <div key={p.prv_id} className="relative bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent rounded-2xl border border-white/[0.08] p-5 hover:border-salon-gold/30 hover:shadow-[0_0_30px_rgba(212,168,67,0.06)] transition-all duration-300 group overflow-hidden">
+              {/* Glow decorativo */}
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-salon-gold/[0.03] rounded-full blur-3xl group-hover:bg-salon-gold/[0.06] transition-colors duration-500" />
+              <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-salon-pink/[0.02] rounded-full blur-2xl" />
+
+              {/* Cabecera: avatar + nombre */}
+              <div className="relative flex items-start gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-salon-gold/20 to-salon-pink/10 border border-salon-gold/15 flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(212,168,67,0.08)]">
+                  <Truck size={20} className="text-salon-gold" />
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <h3 className="font-semibold text-sm text-white/90 truncate">{p.prv_nombre}</h3>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-salon-gold/10 border border-salon-gold/10 text-[10px] text-salon-gold/80 font-medium">
+                      <PackageSearch size={10} />
+                      {p.total_productos ?? 0} producto{(p.total_productos ?? 0) !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => navigate(`/admin/proveedor-productos?prv_id=${p.prv_id}`)} className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 text-[10px] hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-1"><Package size={11} /> Productos</button>
+
+              {/* Datos de contacto */}
+              <div className="relative space-y-2 mb-4">
+                {p.prv_telefono && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+                    <Phone size={11} className="text-salon-gold/60 shrink-0" />
+                    <span className="text-[11px] text-white/50 truncate">{p.prv_telefono}</span>
+                  </div>
+                )}
+                {p.prv_email && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+                    <Mail size={11} className="text-salon-pink/60 shrink-0" />
+                    <span className="text-[11px] text-white/50 truncate">{p.prv_email}</span>
+                  </div>
+                )}
+                {p.prv_direccion && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+                    <MapPin size={11} className="text-white/30 shrink-0" />
+                    <span className="text-[11px] text-white/40 truncate">{p.prv_direccion}</span>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1.5 text-xs text-white/30 mt-3">
-                {p.prv_telefono && <p className="flex items-center gap-1"><Phone size={10} />{p.prv_telefono}</p>}
-                {p.prv_email && <p className="flex items-center gap-1"><Mail size={10} />{p.prv_email}</p>}
-                {p.prv_direccion && <p className="flex items-center gap-1"><MapPin size={10} />{p.prv_direccion}</p>}
-              </div>
-              <div className="flex items-center gap-2 pt-3 border-t border-white/5 mt-3">
-                <button onClick={() => openEdit(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/50 text-[10px] hover:text-salon-pink hover:bg-white/10 transition-all"><Edit3 size={11} /> Editar</button>
-                <button onClick={() => setConfirmDelete(p.prv_id)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/50 text-[10px] hover:text-red-400 hover:bg-white/10 transition-all ml-auto"><Trash2 size={11} /> Eliminar</button>
+
+              {/* Acciones */}
+              <div className="relative flex items-center gap-2 pt-3 border-t border-white/[0.06]">
+                <button
+                  onClick={() => navigate(`/admin/proveedor-productos?prv_id=${p.prv_id}`)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-salon-gold/10 border border-salon-gold/15 text-salon-gold text-[10px] font-medium hover:bg-salon-gold/20 hover:shadow-[0_0_15px_rgba(212,168,67,0.15)] transition-all"
+                >
+                  <Package size={11} /> Ver productos
+                </button>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <button
+                    onClick={() => openEdit(p)}
+                    className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-salon-pink hover:bg-salon-pink/10 hover:border-salon-pink/20 transition-all"
+                    title="Editar proveedor"
+                  >
+                    <Edit3 size={12} />
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(p.prv_id)}
+                    className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                    title="Eliminar proveedor"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
