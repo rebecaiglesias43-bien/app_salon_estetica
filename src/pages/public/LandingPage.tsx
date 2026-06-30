@@ -159,6 +159,22 @@ const nameToImage: Record<string, string> = {
   'Masajes Piedra Caliente': imgMasajesPiedraCaliente,
 };
 
+/** Imagen de respaldo según categoría (cuando el servicio no tiene foto propia) */
+const categoryFallback: Record<string, string> = {
+  'cortes': imgCorte,
+  'cejas': imgCejasCurvas,
+  'coloracion': imgColoracion,
+  'uñas': imgManicure,
+  'masajes': imgMasajes,
+};
+
+/** Obtiene la imagen para un servicio: foto propia → imagen de categoría → genérica */
+function getServicioImagen(nombre: string, categoria: string): string {
+  if (nameToImage[nombre]) return nameToImage[nombre];
+  if (categoryFallback[categoria]) return categoryFallback[categoria];
+  return imgMasajes; // fallback genérico (spa/belleza)
+}
+
 const heroSlides = [
   { img: imgCarrucel1, title: 'Herramientas Profesionales', subtitle: 'Equipamiento premium para resultados impecables' },
   { img: imgCarrucel2, title: 'Confianza Natural', subtitle: 'Realzamos tu belleza única con estilo propio' },
@@ -542,7 +558,7 @@ export default function LandingPage() {
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push({
         name: s.ser_nombre,
-        image: nameToImage[s.ser_nombre] || imgCorte,
+        image: getServicioImagen(s.ser_nombre, cat),
         price: s.ser_precio,
         desc: s.ser_descripcion || '',
       });
@@ -558,7 +574,7 @@ export default function LandingPage() {
   // ─── Categorías para filtrar servicios ────────────────────────
   const categoryMap = [
     { keywords: ['corte'], label: 'Cortes', section: 'servicios', image: imgCorte },
-    { keywords: ['ceja', 'pestaña'], label: 'Cejas y Pestañas', section: 'servicios', image: imgCorte },
+    { keywords: ['ceja', 'pestaña'], label: 'Cejas y Pestañas', section: 'servicios', image: imgCejasCurvas },
     { keywords: ['color', 'tinte', 'mecha', 'coloración'], label: 'Coloración', section: 'servicios', image: imgColoracion },
     { keywords: ['uña', 'manicure'], label: 'Uñas / Manicure', section: 'servicios', image: imgManicure },
     { keywords: ['masaje'], label: 'Masajes', section: 'servicios', image: imgMasajes },
