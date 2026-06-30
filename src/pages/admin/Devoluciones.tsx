@@ -92,10 +92,12 @@ export default function Devoluciones() {
       const devueltosPrevios: Record<number, number> = {};
       (movRes.data.data || []).forEach((m: any) => {
         const motivoRaw: string = m.inm_motivo || '';
+        // Solo contar movimientos de tipo devolución (ignorar "Compra", "Uso en servicio", etc.)
+        if (!motivoRaw.startsWith('Devolución')) return;
         // Extraer compra_id del motivo (nuevo formato)
         const match = motivoRaw.match(/compra_id=(\d+)/);
         const movCompraId = match ? parseInt(match[1]) : null;
-        // Compatibilidad: movimientos viejos sin compra_id también se cuentan (movCompraId === null)
+        // Si no tiene compra_id (devoluciones viejas), contar para todas las compras
         if (movCompraId === null || movCompraId === compra.com_id) {
           devueltosPrevios[m.inm_producto_id] = (devueltosPrevios[m.inm_producto_id] || 0) + m.inm_cantidad;
         }
