@@ -94,8 +94,8 @@ def create_devolucion():
             match = re.search(r'compra_id=(\d+)', motivo_raw)
             mov_compra_id = int(match.group(1)) if match else None
             
-            # Si no tiene compra_id (devoluciones viejas), contar para todas las compras
-            if mov_compra_id is None or mov_compra_id == compra_id:
+            # Solo contar si es de ESTA compra (ignorar devoluciones viejas sin compra_id)
+            if mov_compra_id == compra_id:
                 pid = m['inm_producto_id']
                 if pid in total_devuelto_por_producto:
                     total_devuelto_por_producto[pid] += m['inm_cantidad']
