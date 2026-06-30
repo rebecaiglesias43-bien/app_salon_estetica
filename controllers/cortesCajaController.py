@@ -66,6 +66,29 @@ def get_actividad_corte(id):
         return jsonify({'error': str(e)}), 500
 
 @auth_required
+def limpiar_todo():
+    """Elimina TODOS los cortes de caja y desvincula las facturas. Usar con precaucion."""
+    try:
+        # 1. Contar lo que hay
+        total = CortesCaja.count_all()
+        
+        # 2. Desvincular facturas
+        CortesCaja.execute("UPDATE facturas SET fac_corte_id = NULL WHERE fac_corte_id IS NOT NULL")
+        
+        # 3. Eliminar todos los cortes
+        CortesCaja.execute("DELETE FROM cortes_caja")
+        
+        # 4. Resetear AUTO_INCREMENT
+        CortesCaja.execute("ALTER TABLE cortes_caja AUTO_INCREMENT = 1")
+        
+        return jsonify({
+            'message': f'Limpieza completada. {total} cortes eliminados.',
+            'eliminados': total
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@auth_required
 def cerrar_corte(id):
     try:
         corte = CortesCaja.get_by_id(id)

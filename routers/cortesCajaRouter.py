@@ -9,3 +9,4 @@ cortesCaja_bp.route('/abierto', methods=['GET'])(auth_required(cortesCajaControl
 cortesCaja_bp.route('/abrir', methods=['POST'])(auth_required(cortesCajaController.abrir_corte))
 cortesCaja_bp.route('/<int:id>/actividad', methods=['GET'])(auth_required(cortesCajaController.get_actividad_corte))
 cortesCaja_bp.route('/<int:id>/cerrar', methods=['PUT'])(auth_required(cortesCajaController.cerrar_corte))
+cortesCaja_bp.route('/limpiar-todo', methods=['POST'])(auth_required(cortesCajaController.limpiar_todo))
