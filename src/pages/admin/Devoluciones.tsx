@@ -195,7 +195,6 @@ export default function Devoluciones() {
         </div>
       ) : (
         <div className="space-y-3">
-          <Pagination page={page} pages={pages} total={total} limit={10} onChange={setPage} />
           {compras.map(c => {
             const isDevuelta = c.com_estado === 'Devuelta';
             const isParcial = c.com_estado === 'Parcialmente devuelta';
