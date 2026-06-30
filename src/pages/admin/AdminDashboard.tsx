@@ -18,17 +18,6 @@ interface CorteInfo {
   estado: string;
 }
 
-interface CorteHistorico {
-  cor_id: number;
-  cor_fecha_apertura: string;
-  cor_fecha_cierre?: string;
-  cor_base_inicial: number;
-  cor_ingresos?: number;
-  cor_egresos?: number;
-  cor_ganancia_neta?: number;
-  cor_periodo: string;
-  cor_estado: string;
-}
 
 interface DashboardData {
   ingresos_hoy: number;
@@ -60,7 +49,6 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateStr, setDateStr] = useState('');
-  const [cortesHistorial, setCortesHistorial] = useState<CorteHistorico[]>([]);
   const [proximasCitas, setProximasCitas] = useState<ProximasCitasData | null>(null);
   const [loadingCitas, setLoadingCitas] = useState(true);
   const [errorCitas, setErrorCitas] = useState<string | null>(null);
@@ -71,10 +59,6 @@ export default function AdminDashboard() {
     const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     setDateStr(`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]}`);
-    // Cargar historial de cortes para el selector
-    api.get('/api/cortes-caja/', { params: { limit: 100 } })
-      .then(r => setCortesHistorial(r.data.data || []))
-      .catch(() => {});
   }, []);
 
   const location = useLocation();
@@ -185,31 +169,8 @@ export default function AdminDashboard() {
         </div>
       </motion.div>
 
-      {/* ─── Selector de Corte ─── */}
-      <motion.div variants={fadeUp} initial="initial" animate="animate" className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs text-white/40">
-          <CalendarDays size={14} />
-          <span>Período:</span>
-        </div>
-        <select
-          value={corteId || ''}
-          onChange={e => {
-            const val = e.target.value;
-            if (val) navigate(`/admin?corte_id=${val}`);
-            else navigate('/admin');
-          }}
-          className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-salon-gold/50 min-w-[220px]"
-        >
-          <option value="" className="bg-[#120c1a]">📊 Hoy (vista general)</option>
-          {cortesHistorial
-            .filter(c => c.cor_estado === 'Cerrado')
-            .map(c => (
-              <option key={c.cor_id} value={c.cor_id} className="bg-[#120c1a]">
-                {new Date(c.cor_fecha_apertura).toLocaleDateString()} — {c.cor_periodo} · ${(c.cor_ganancia_neta ?? 0).toLocaleString()}
-              </option>
-            ))}
-        </select>
-        {data.corte_activo && (
+      {data.corte_activo && (
+        <motion.div variants={fadeUp} initial="initial" animate="animate" className="flex items-center gap-3">
           <span className={`text-[10px] px-3 py-1.5 rounded-full flex items-center gap-1 ${data.corte_activo.estado === 'Abierto' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-white/5 text-white/40 border border-white/10'}`}>
             <CheckCircle size={10} />
             {data.corte_activo.estado === 'Abierto' ? 'Corte activo' : 'Corte histórico'}
@@ -217,8 +178,8 @@ export default function AdminDashboard() {
               <> · Neto: ${data.corte_activo.ganancia_neta.toLocaleString()}</>
             )}
           </span>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* ─── Fila 1: Stats ─── */}
       <motion.div variants={fadeUp} initial="initial" animate="animate" className="grid grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
